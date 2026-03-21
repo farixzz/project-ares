@@ -1,0 +1,41 @@
+# ARES - .dockerignore
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+*.egg-info
+
+# IDE
+.vscode/
+.idea/
+
+# Output & Reports
+ares_results/
+*.log
+
+# Secrets
+.env
+.env.*
+config.yaml
+*.key
+*.pem
+
+# Docs & Meta
+README.md
+PROFILES.md
+CHANGELOG.md
+LICENSE
+*.md
+
+# OS
+.DS_Store
+Thumbs.db

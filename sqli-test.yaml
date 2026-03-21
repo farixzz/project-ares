@@ -1,0 +1,14 @@
+id: testphp-sqli
+info:
+  name: TestPHP SQLi
+  author: rizz
+  severity: high
+requests:
+  - raw:
+      - |
+        GET /listproducts.php?cat=1%27 HTTP/1.1
+        Host: testphp.vulnweb.com
+    matchers:
+      - type: word
+        words:
+          - "Error: You have an error in your SQL syntax"
