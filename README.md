@@ -173,6 +173,48 @@ ARES generates comprehensive reports with:
 
 ## 🏗️ Architecture
 
+```mermaid
+flowchart TD
+    CLI["ares.py\nCLI entry point"]
+    DISP["display.py\nTerminal UI"]
+    CONF["config.py\nYAML config"]
+
+    CLI --> SCAN
+    CLI --> DISP
+    CLI --> CONF
+
+    SCAN["scanner.py\nAutonomous orchestration engine"]
+
+    SCAN --> AI["Ollama / AI\nMistral model backend"]
+    SCAN --> TOOLS["tools/\n10 tool wrappers"]
+    SCAN --> CVSS["cvss.py\nCVSS 3.1 scoring"]
+
+    TOOLS --> RECON["Nmap · WhatWeb · Subfinder"]
+    TOOLS --> CRAWL["Katana · FFUF · Nikto"]
+    TOOLS --> EXPLOIT["SQLMap · Commix · Hydra"]
+
+    AI --> REMED
+    TOOLS --> REMED
+    CVSS --> REMED
+
+    REMED["remediation_db.py\nFix guidance + MITRE ATT&CK mapping"]
+    REMED --> REPORT["reporter.py\nReport generation"]
+
+    REPORT --> PDF["PDF"]
+    REPORT --> HTML["HTML"]
+    REPORT --> JSON["JSON"]
+
+    style SCAN fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+    style REMED fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+    style TOOLS fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+    style AI fill:#E1F5EE,stroke:#0F6E56,color:#085041
+    style CVSS fill:#E1F5EE,stroke:#0F6E56,color:#085041
+    style REPORT fill:#E1F5EE,stroke:#0F6E56,color:#085041
+    style RECON fill:#E1F5EE,stroke:#0F6E56,color:#085041
+    style CRAWL fill:#FAECE7,stroke:#993C1D,color:#712B13
+    style EXPLOIT fill:#FAECE7,stroke:#993C1D,color:#712B13
+```
+
 ```
 ares-cli/
 ├── ares.py              # Main CLI entry point
