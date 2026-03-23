@@ -43,7 +43,7 @@ See [PROFILES.md](./PROFILES.md) for detailed documentation.
 ### 1. Clone Repository
 ```bash
 git clone https://github.com/farixzz/project-ares.git
-cd ares-cli
+cd project-ares
 ```
 
 ### 2. Setup Virtual Environment
