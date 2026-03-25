@@ -5,6 +5,7 @@
 ![AI](https://img.shields.io/badge/AI-Autonomous-purple)
 ![CVSS](https://img.shields.io/badge/Scoring-CVSS%203.1-orange)
 ![Version](https://img.shields.io/badge/Version-2.0.1-green)
+![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker&logoColor=white)
 
 **ARES** is an AI-powered, autonomous penetration testing CLI that orchestrates industry-standard security tools to perform reconnaissance, vulnerability scanning, and exploitation—all from your terminal.
 
@@ -216,7 +217,7 @@ flowchart TD
 ```
 
 ```
-ares-cli/
+project-ares/
 ├── ares.py              # Main CLI entry point
 ├── ares_cli/
 │   ├── scanner.py      # Autonomous scanning engine
