@@ -5,6 +5,7 @@
 ![AI](https://img.shields.io/badge/AI-Autonomous-purple)
 ![CVSS](https://img.shields.io/badge/Scoring-CVSS%203.1-orange)
 ![Version](https://img.shields.io/badge/Version-2.0.1-green)
+![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker&logoColor=white)
 
 **ARES** is an AI-powered, autonomous penetration testing CLI that orchestrates industry-standard security tools to perform reconnaissance, vulnerability scanning, and exploitation—all from your terminal.
 
@@ -42,8 +43,8 @@ See [PROFILES.md](./PROFILES.md) for detailed documentation.
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/farixzz/ares-cli.git
-cd ares-cli
+git clone https://github.com/farixzz/project-ares.git
+cd project-ares
 ```
 
 ### 2. Setup Virtual Environment
@@ -206,8 +207,50 @@ ARES generates comprehensive reports with:
 
 ## 🏗️ Architecture
 
+```mermaid
+flowchart TD
+    CLI["ares.py\nCLI entry point"]
+    DISP["display.py\nTerminal UI"]
+    CONF["config.py\nYAML config"]
+
+    CLI --> SCAN
+    CLI --> DISP
+    CLI --> CONF
+
+    SCAN["scanner.py\nAutonomous orchestration engine"]
+
+    SCAN --> AI["Ollama / AI\nMistral model backend"]
+    SCAN --> TOOLS["tools/\n10 tool wrappers"]
+    SCAN --> CVSS["cvss.py\nCVSS 3.1 scoring"]
+
+    TOOLS --> RECON["Nmap · WhatWeb · Subfinder"]
+    TOOLS --> CRAWL["Katana · FFUF · Nikto"]
+    TOOLS --> EXPLOIT["SQLMap · Commix · Hydra"]
+
+    AI --> REMED
+    TOOLS --> REMED
+    CVSS --> REMED
+
+    REMED["remediation_db.py\nFix guidance + MITRE ATT&CK mapping"]
+    REMED --> REPORT["reporter.py\nReport generation"]
+
+    REPORT --> PDF["PDF"]
+    REPORT --> HTML["HTML"]
+    REPORT --> JSON["JSON"]
+
+    style SCAN fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+    style REMED fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+    style TOOLS fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+    style AI fill:#E1F5EE,stroke:#0F6E56,color:#085041
+    style CVSS fill:#E1F5EE,stroke:#0F6E56,color:#085041
+    style REPORT fill:#E1F5EE,stroke:#0F6E56,color:#085041
+    style RECON fill:#E1F5EE,stroke:#0F6E56,color:#085041
+    style CRAWL fill:#FAECE7,stroke:#993C1D,color:#712B13
+    style EXPLOIT fill:#FAECE7,stroke:#993C1D,color:#712B13
 ```
-ares-cli/
+
+```
+project-ares/
 ├── ares.py              # Main CLI entry point
 ├── ares_cli/
 │   ├── scanner.py      # Autonomous scanning engine
