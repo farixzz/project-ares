@@ -92,7 +92,22 @@ class ScanState:
             "tools_used": self.tools_used,
             "messages": self.messages,
             "waf_detected": self.waf_detected,
+            "exploitation_results": self.exploitation_results,
         }
+
+def check_ollama_connection(host: str = "http://localhost:11434") -> bool:
+    """Check if Ollama is reachable before scan starts."""
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            f"{host}/api/tags",
+            headers={"User-Agent": "ARES/2.0.1"}
+        )
+        resp = urllib.request.urlopen(req, timeout=3)
+        return resp.status == 200
+    except Exception:
+        return False
+
 
 class AutonomousScanner:
     """
@@ -105,6 +120,7 @@ class AutonomousScanner:
         self.tools = None
         self.state: Optional[ScanState] = None
         self._progress_callback: Optional[Callable] = None
+        self._ai_available: bool = False
         self._init_tools()
     
     def _init_tools(self) -> None:
@@ -149,7 +165,27 @@ class AutonomousScanner:
         
         self.state = ScanState(target=target, profile=profile, stealth_mode=profile.stealth_mode)
         self.state.add_message(f"Starting {profile.name} scan on {target}")
-        
+
+        # Check Ollama connectivity and warn loudly if unavailable
+        if self.config.enable_ai_analysis:
+            self._ai_available = check_ollama_connection(self.config.ollama_host)
+            if not self._ai_available:
+                print_warning("=" * 60)
+                print_warning("  OLLAMA NOT REACHABLE — AI analysis is DISABLED")
+                print_warning(f"  Expected at: {self.config.ollama_host}")
+                print_warning("  Fix: Run 'ollama serve' on your host machine")
+                print_warning("  Then: 'ollama pull mistral' to download the model")
+                print_warning("  Docker users: use --ollama-host http://host.docker.internal:11434")
+                print_warning("=" * 60)
+                self.state.add_message("WARNING: Ollama unavailable — AI analysis disabled")
+                # Disable AI for this scan so reporter falls back cleanly
+                self.config.enable_ai_analysis = False
+            else:
+                print_success(f"Ollama connected at {self.config.ollama_host}")
+                self.state.add_message("Ollama AI analysis: ENABLED")
+        else:
+            self._ai_available = False
+
         if dry_run:
             return self._dry_run()
         
@@ -332,6 +368,18 @@ class AutonomousScanner:
                 print_success(f"Found {len(self.state.open_ports)} open ports")
                 self.state.add_message(f"Network scan: {len(self.state.open_ports)} open ports")
                 
+                # Force web service flag if any HTTP-related port found
+                for port in self.state.open_ports:
+                    p = port.get("port", 0)
+                    svc = port.get("service", "").lower()
+                    if p in [80, 443, 8080, 8443, 3000, 8000, 8888] or "http" in svc:
+                        self.state.has_web_service = True
+                        break
+                
+                # Also default to True for any web target if no ports explicitly blocked it
+                if not self.state.has_web_service and self.state.open_ports:
+                    self.state.has_web_service = True
+                
                 # Log interesting ports
                 for port in self.state.open_ports[:5]:
                     print_info(f"  Port {port['port']}/{port['protocol']}: {port['service']}")
@@ -339,6 +387,7 @@ class AutonomousScanner:
             # Fallback: HTTP probe if nmap found no ports (common for cloud/WAF targets)
             if not self.state.open_ports:
                 import urllib.request
+                import urllib.error
                 print_info("  Probing HTTP/HTTPS directly (firewall may be blocking port scan)...")
                 
                 for port, proto in [(80, "http"), (443, "https")]:
@@ -355,7 +404,7 @@ class AutonomousScanner:
                             })
                             self.state.has_web_service = True
                             print_success(f"  HTTP probe: Port {port} is open ({proto})")
-                    except:
+                    except (urllib.error.URLError, TimeoutError, ConnectionError):
                         pass
                 
                 if self.state.open_ports:
@@ -420,7 +469,14 @@ class AutonomousScanner:
         
         try:
             url = self._get_url(self.state.target)
-            result = self.tools.run_ffuf(url, mode="dir", quick=True)
+            quick_fuzz = self.state.profile.name == "quick" or self.state.stealth_mode
+            result = self.tools.run_ffuf(
+                url, 
+                mode="dir", 
+                quick=quick_fuzz,
+                threads=self.state.profile.threads,
+                rate_limit=self.state.profile.rate_limit
+            )
             
             if result and result.get("results"):
                 for r in result["results"]:
@@ -443,6 +499,9 @@ class AutonomousScanner:
             url = self._get_url(self.state.target)
             result = self.tools.run_katana(url, quick=True)
             
+            if result and result.get("error"):
+                print_warning(f"Katana: {result['error']}")
+            
             if result and result.get("endpoints"):
                 for ep in result["endpoints"]:
                     if isinstance(ep, dict):
@@ -453,19 +512,37 @@ class AutonomousScanner:
                 # Remove duplicates
                 self.state.endpoints = list(set(self.state.endpoints))
                 print_success(f"Crawled {len(self.state.endpoints)} total endpoints")
+            elif not (result and result.get("error")):
+                print_info("    Katana found no new endpoints")
         except Exception as e:
             self.state.errors.append(f"Crawling failed: {e}")
             print_warning(f"Crawling failed: {e}")
     
     def _run_vuln_scan(self) -> None:
         """Run vulnerability scanning"""
+        # Auto-update nuclei templates before scanning
+        try:
+            import subprocess
+            print_info("  Updating Nuclei templates...")
+            result = subprocess.run(
+                ["nuclei", "-update-templates"],
+                capture_output=True, text=True, timeout=60
+            )
+            if result.returncode == 0:
+                print_success("Nuclei templates updated")
+            else:
+                print_warning("Nuclei template update skipped (non-fatal)")
+        except Exception:
+            print_warning("Nuclei template update skipped (non-fatal)")
+
         # 1. Nuclei Scan
         print_tool("nuclei", self.state.target)
         self.state.tools_used.append("nuclei")
         
         try:
             url = self._get_url(self.state.target)
-            is_quick = self.state.profile.name == "quick"
+            # quick_scan for quick/standard, full_scan for deep/stealth
+            is_quick = self.state.profile.name in ["quick", "standard"]
             result = self.tools.run_nuclei(url, quick=is_quick)
             
             if result and result.get("error"):
@@ -523,8 +600,12 @@ class AutonomousScanner:
             line = line.strip()
             if not line.startswith("+"):
                 continue
-            # Skip banner/summary lines
-            if any(x in line.lower() for x in ["start time", "end time", "host(s) tested", "target ip", "target hostname", "target port", "server:"]):
+            # Skip banner/summary lines and stats
+            if any(x in line.lower() for x in [
+                "start time", "end time", "host(s) tested", "target ip",
+                "target hostname", "target port", "server:",
+                "requests:", "item(s) reported", "error(s) and",
+            ]):
                 continue
             
             finding_text = line.lstrip("+ ").strip()
@@ -559,6 +640,7 @@ class AutonomousScanner:
                 "severity": severity,
                 "details": finding_text,
                 "vuln_id": vuln_id,
+                "cve_id": "N/A",
             })
         
         if findings:
@@ -791,14 +873,14 @@ class AutonomousScanner:
                 normalized_vulns.append(vuln)
             elif hasattr(vuln, 'to_dict'):
                 normalized_vulns.append(vuln.to_dict())
-            elif hasattr(vuln, 'severity'):
+            else:
+                # Last resort fallback if it's some object we don't recognize
                 normalized_vulns.append({
-                    "name": getattr(vuln, 'name', 'Unknown'),
+                    "name": getattr(vuln, 'name', 'Unknown Vulnerability'),
                     "severity": getattr(vuln, 'severity', 'unknown'),
-                    "template_id": getattr(vuln, 'template_id', ''),
                     "description": getattr(vuln, 'description', ''),
-                    "cvss_score": getattr(vuln, 'cvss_score', 0.0),
-                    "tool": "nuclei",
+                    "cve_id": getattr(vuln, 'cve_id', ''),
+                    "tool": getattr(vuln, 'tool', 'unknown')
                 })
         self.state.vulnerabilities = normalized_vulns
         
@@ -903,14 +985,18 @@ class AutonomousScanner:
         
         self.state.severity_score = round(combined, 1)
         
-        # Determine level using CVSS thresholds
+        # Determine level using CVSS thresholds — INFO findings don't count toward risk level
+        non_info_vulns = [v for v in self.state.vulnerabilities 
+                          if v.get("severity", "").lower() not in ("info", "unknown", "")]
+        has_real_vulns = len(non_info_vulns) > 0
+        
         if combined >= 9.0:
             self.state.severity_level = "CRITICAL"
         elif combined >= 7.0:
             self.state.severity_level = "HIGH"
         elif combined >= 4.0:
             self.state.severity_level = "MEDIUM"
-        elif combined >= 0.1:
+        elif combined >= 0.1 and (has_real_vulns or combined >= 2.0):
             self.state.severity_level = "LOW"
         else:
             self.state.severity_level = "NONE"

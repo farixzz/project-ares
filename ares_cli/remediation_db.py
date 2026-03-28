@@ -391,6 +391,192 @@ REMEDIATION_DB: Dict[str, Remediation] = {
         cwe_id="CWE-1104",
         owasp_category="A06:2021 - Vulnerable and Outdated Components",
     ),
+    
+    "csrf": Remediation(
+        title="Cross-Site Request Forgery (CSRF)",
+        description="Application does not validate request origin, allowing attackers to forge requests on behalf of authenticated users.",
+        fix_steps=[
+            "Implement anti-CSRF tokens (synchronizer token pattern)",
+            "Use SameSite cookie attribute (Strict or Lax)",
+            "Verify Origin and Referer headers on state-changing requests",
+            "Use framework-provided CSRF protection (Django, Rails, etc.)",
+        ],
+        commands=[
+            "# Django: {% csrf_token %} in forms, CsrfViewMiddleware enabled",
+            "# Express.js: npm install csurf && app.use(csrf())",
+            "# Set SameSite cookie: Set-Cookie: session=abc; SameSite=Strict; Secure",
+        ],
+        effort="Low",
+        priority="High",
+        references=[
+            "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html",
+        ],
+        cwe_id="CWE-352",
+        owasp_category="A01:2021 - Broken Access Control",
+    ),
+    
+    "cors-misconfiguration": Remediation(
+        title="CORS Misconfiguration",
+        description="Overly permissive CORS policy allows untrusted origins to access sensitive resources.",
+        fix_steps=[
+            "Remove 'Access-Control-Allow-Origin: *' on authenticated endpoints",
+            "Whitelist specific trusted origins instead of reflecting the Origin header",
+            "Never allow credentials with wildcard origins",
+            "Validate the Origin header server-side before reflecting",
+        ],
+        commands=[
+            "# Nginx: add_header Access-Control-Allow-Origin 'https://trusted.com';",
+            "# Apache: Header set Access-Control-Allow-Origin 'https://trusted.com'",
+            "# Express.js: cors({ origin: ['https://trusted.com'], credentials: true })",
+        ],
+        effort="Low",
+        priority="Medium",
+        references=[
+            "https://portswigger.net/web-security/cors",
+            "https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html#cross-origin-resource-sharing",
+        ],
+        cwe_id="CWE-942",
+        owasp_category="A05:2021 - Security Misconfiguration",
+    ),
+    
+    "clickjacking": Remediation(
+        title="Clickjacking / UI Redress",
+        description="Application can be framed by malicious sites, tricking users into unintended actions.",
+        fix_steps=[
+            "Set X-Frame-Options header to DENY or SAMEORIGIN",
+            "Implement Content-Security-Policy frame-ancestors directive",
+            "Use frame-busting JavaScript as defense-in-depth",
+        ],
+        commands=[
+            "# Nginx: add_header X-Frame-Options 'DENY' always;",
+            "# Apache: Header always set X-Frame-Options 'DENY'",
+            "# CSP: Content-Security-Policy: frame-ancestors 'none';",
+        ],
+        effort="Low",
+        priority="Medium",
+        references=[
+            "https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html",
+        ],
+        cwe_id="CWE-1021",
+        owasp_category="A01:2021 - Broken Access Control",
+    ),
+    
+    "cookie-issues": Remediation(
+        title="Insecure Cookie Configuration",
+        description="Session cookies lack security flags, making them vulnerable to interception or XSS theft.",
+        fix_steps=[
+            "Set HttpOnly flag on all session cookies",
+            "Set Secure flag to prevent transmission over HTTP",
+            "Set SameSite attribute to Strict or Lax",
+            "Use __Host- or __Secure- cookie prefixes for additional protection",
+        ],
+        commands=[
+            "# PHP: session.cookie_httponly = 1; session.cookie_secure = 1",
+            "# Express.js: { httpOnly: true, secure: true, sameSite: 'strict' }",
+            "# Django: SESSION_COOKIE_HTTPONLY = True; SESSION_COOKIE_SECURE = True",
+        ],
+        effort="Low",
+        priority="High",
+        references=[
+            "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html",
+        ],
+        cwe_id="CWE-614",
+        owasp_category="A07:2021 - Identification and Authentication Failures",
+    ),
+    
+    "file-upload": Remediation(
+        title="Unrestricted File Upload",
+        description="Application allows uploading malicious files (web shells, executables) without proper validation.",
+        fix_steps=[
+            "Validate file type by content (magic bytes), not just extension",
+            "Store uploads outside web root or on a separate domain",
+            "Rename uploaded files to random names",
+            "Set size limits and scan with antivirus",
+            "Disable script execution in upload directories",
+        ],
+        commands=[
+            "# Nginx disable PHP in uploads: location /uploads/ { location ~ \\.php$ { deny all; } }",
+            "# Apache: <Directory /uploads> php_flag engine off </Directory>",
+            "# Python: imghdr.what(file) to verify image type",
+        ],
+        effort="Medium",
+        priority="Critical",
+        references=[
+            "https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html",
+        ],
+        cwe_id="CWE-434",
+        owasp_category="A04:2021 - Insecure Design",
+    ),
+    
+    "deserialization": Remediation(
+        title="Insecure Deserialization",
+        description="Application deserializes untrusted data, enabling remote code execution or privilege escalation.",
+        fix_steps=[
+            "Never deserialize untrusted data",
+            "Use safe serialization formats (JSON) instead of native object serialization",
+            "Implement integrity checks (HMAC) on serialized objects",
+            "Restrict deserialization classes via allowlists",
+            "Monitor deserialization exceptions for attack patterns",
+        ],
+        commands=[
+            "# Python: Use json.loads() instead of pickle.loads()",
+            "# Java: Use ObjectInputFilter to whitelist classes",
+            "# PHP: Use json_decode() instead of unserialize()",
+        ],
+        effort="High",
+        priority="Critical",
+        references=[
+            "https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html",
+        ],
+        cwe_id="CWE-502",
+        owasp_category="A08:2021 - Software and Data Integrity Failures",
+    ),
+    
+    "xxe": Remediation(
+        title="XML External Entity (XXE) Injection",
+        description="Application processes XML input with external entity references, enabling file disclosure or SSRF.",
+        fix_steps=[
+            "Disable external entity processing in XML parsers",
+            "Use less complex data formats (JSON) where possible",
+            "Validate and sanitize XML input",
+            "Update XML processing libraries to latest versions",
+        ],
+        commands=[
+            "# Python (lxml): parser = etree.XMLParser(resolve_entities=False)",
+            "# Java: factory.setFeature('http://apache.org/xml/features/disallow-doctype-decl', true)",
+            "# PHP: libxml_disable_entity_loader(true)",
+        ],
+        effort="Low",
+        priority="High",
+        references=[
+            "https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html",
+        ],
+        cwe_id="CWE-611",
+        owasp_category="A05:2021 - Security Misconfiguration",
+    ),
+    
+    "idor": Remediation(
+        title="Insecure Direct Object Reference (IDOR)",
+        description="Application exposes internal object references, allowing unauthorized access to other users' data.",
+        fix_steps=[
+            "Implement proper authorization checks on every data access",
+            "Use indirect references (UUIDs) instead of sequential IDs",
+            "Validate that the authenticated user owns the requested resource",
+            "Log and alert on access pattern anomalies",
+        ],
+        commands=[
+            "# Python: if obj.owner_id != current_user.id: abort(403)",
+            "# Use UUIDs: import uuid; resource_id = str(uuid.uuid4())",
+            "# Django: queryset.filter(owner=request.user)",
+        ],
+        effort="Medium",
+        priority="High",
+        references=[
+            "https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html",
+        ],
+        cwe_id="CWE-639",
+        owasp_category="A01:2021 - Broken Access Control",
+    ),
 }
 
 
@@ -442,6 +628,28 @@ def get_remediation(vuln_name: str) -> Optional[Remediation]:
         "traversal": "path-traversal",
         "lfi": "path-traversal",
         "ssrf": "ssrf",
+        "csrf": "csrf",
+        "cross-site-request": "csrf",
+        "request-forgery": "csrf",
+        "cors": "cors-misconfiguration",
+        "cross-origin": "cors-misconfiguration",
+        "clickjack": "clickjacking",
+        "x-frame": "clickjacking",
+        "frame-options": "clickjacking",
+        "cookie": "cookie-issues",
+        "httponly": "cookie-issues",
+        "samesite": "cookie-issues",
+        "upload": "file-upload",
+        "unrestricted-file": "file-upload",
+        "deserialization": "deserialization",
+        "deserializ": "deserialization",
+        "pickle": "deserialization",
+        "xxe": "xxe",
+        "xml-external": "xxe",
+        "external-entity": "xxe",
+        "idor": "idor",
+        "insecure-direct": "idor",
+        "object-reference": "idor",
         "password": "weak-credentials",
         "credential": "weak-credentials",
         "brute": "weak-credentials",
@@ -454,6 +662,19 @@ def get_remediation(vuln_name: str) -> Optional[Remediation]:
         "cve": "outdated-software",
         "eol": "outdated-software",
         "end-of-life": "outdated-software",
+        # Nikto generic finding names
+        "web-server-finding": "web-server-finding",
+        "web server finding": "web-server-finding",
+        "server finding": "web-server-finding",
+        "misconfiguration": "web-server-misconfiguration",
+        "web server misconfiguration": "web-server-misconfiguration",
+        "critical web vulnerability": "critical-web-vulnerability",
+        "critical-web-vulnerability": "critical-web-vulnerability",
+        "high risk web vulnerability": "high-risk-web-vulnerability",
+        "high-risk-web-vulnerability": "high-risk-web-vulnerability",
+        "osvdb": "osvdb-listed-vulnerability",
+        "osvdb-listed": "osvdb-listed-vulnerability",
+        "finding": "web-server-finding",
     }
     
     for keyword, remediation_key in keywords.items():
@@ -532,3 +753,130 @@ def generate_remediation_roadmap(vulnerabilities: list) -> List[Dict]:
         item["timeline"] = phase_labels.get(item["phase"], "As needed")
     
     return roadmap
+
+# ── Fallback entries for generic Nikto / scanner finding names ──────────────
+
+REMEDIATION_DB["web-server-finding"] = Remediation(
+    title="Web Server Security Finding",
+    description="The web server has a configuration or disclosure issue detected during automated scanning.",
+    fix_steps=[
+        "Review the specific finding details and apply vendor hardening guidelines",
+        "Disable unnecessary features, modules, and default pages on the web server",
+        "Remove server version disclosure from HTTP response headers",
+        "Apply CIS Benchmark hardening for your web server (Apache/Nginx/IIS)",
+        "Run a manual review of server configuration files",
+    ],
+    commands=[
+        "# Apache — remove server version: ServerTokens Prod",
+        "# Apache — remove OS info: ServerSignature Off",
+        "# Nginx — remove version: server_tokens off;",
+        "# Check current headers: curl -I http://target.com",
+    ],
+    effort="Low",
+    priority="Low",
+    references=[
+        "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html",
+        "https://www.cisecurity.org/benchmark/apache_http_server",
+    ],
+    cwe_id="CWE-16",
+    owasp_category="A05:2021 - Security Misconfiguration",
+)
+
+REMEDIATION_DB["web-server-misconfiguration"] = Remediation(
+    title="Web Server Misconfiguration",
+    description="A web server misconfiguration was detected that could expose sensitive information or enable attacks.",
+    fix_steps=[
+        "Identify the specific misconfiguration from the finding details",
+        "Apply the principle of least privilege to web server directories",
+        "Disable directory listing if enabled",
+        "Ensure security headers are present: X-Frame-Options, X-Content-Type-Options, CSP",
+        "Review and tighten file permissions on web root",
+    ],
+    commands=[
+        "# Apache — disable directory listing: Options -Indexes",
+        "# Nginx — disable autoindex: autoindex off;",
+        "# Add security headers (Apache): Header always set X-Frame-Options DENY",
+        "# Test headers: curl -I https://target.com | grep -i 'x-frame\\|x-content\\|strict'",
+    ],
+    effort="Low",
+    priority="Medium",
+    references=[
+        "https://owasp.org/www-project-secure-headers/",
+        "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html",
+    ],
+    cwe_id="CWE-16",
+    owasp_category="A05:2021 - Security Misconfiguration",
+)
+
+REMEDIATION_DB["critical-web-vulnerability"] = Remediation(
+    title="Critical Web Vulnerability",
+    description="A critical severity vulnerability was identified by automated scanning. Immediate review required.",
+    fix_steps=[
+        "IMMEDIATE: Identify the exact vulnerability from scanner output details",
+        "Apply vendor patches or workarounds immediately",
+        "Isolate affected service if active exploitation is suspected",
+        "Conduct manual verification of the finding",
+        "Review access logs for signs of exploitation",
+    ],
+    commands=[
+        "# Check logs for exploitation attempts:",
+        "grep -i 'cmd=\\|exec(\\|system(\\|passthru(' /var/log/apache2/access.log",
+        "# Monitor live traffic: tcpdump -i eth0 port 80 -A",
+    ],
+    effort="Medium",
+    priority="Critical",
+    references=[
+        "https://owasp.org/www-community/vulnerabilities/",
+        "https://nvd.nist.gov/",
+    ],
+    cwe_id="CWE-20",
+    owasp_category="A03:2021 - Injection",
+)
+
+REMEDIATION_DB["high-risk-web-vulnerability"] = Remediation(
+    title="High Risk Web Vulnerability",
+    description="A high severity web vulnerability was detected. Prioritise remediation within 1 week.",
+    fix_steps=[
+        "Review the vulnerability details from the scanner output",
+        "Apply available patches or implement compensating controls",
+        "Validate all user-controlled input strictly on server side",
+        "Implement WAF rules targeting the identified vulnerability class",
+        "Retest after remediation to confirm fix",
+    ],
+    commands=[
+        "# Deploy ModSecurity WAF (Apache):",
+        "sudo apt install libapache2-mod-security2",
+        "sudo cp /etc/modsecurity/modsecurity.conf-recommended /etc/modsecurity/modsecurity.conf",
+    ],
+    effort="Medium",
+    priority="High",
+    references=[
+        "https://owasp.org/www-project-web-security-testing-guide/",
+    ],
+    cwe_id="CWE-20",
+    owasp_category="A03:2021 - Injection",
+)
+
+REMEDIATION_DB["osvdb-listed-vulnerability"] = Remediation(
+    title="OSVDB Listed Vulnerability",
+    description="A vulnerability listed in the OSVDB database was detected. Review the specific OSVDB entry for details.",
+    fix_steps=[
+        "Look up the specific OSVDB ID in NVD or CVE databases for current patch status",
+        "Apply the relevant vendor patch or upgrade to a patched version",
+        "If no patch exists, implement compensating controls (WAF, firewall rules)",
+        "Monitor vendor security advisories for updates",
+    ],
+    commands=[
+        "# Search NVD for CVE details: https://nvd.nist.gov/vuln/search",
+        "# Check installed package version: dpkg -l | grep <package>",
+        "# Update all packages: sudo apt update && sudo apt upgrade",
+    ],
+    effort="Medium",
+    priority="Medium",
+    references=[
+        "https://nvd.nist.gov/",
+        "https://www.cve.org/",
+    ],
+    cwe_id="CWE-1104",
+    owasp_category="A06:2021 - Vulnerable and Outdated Components",
+)

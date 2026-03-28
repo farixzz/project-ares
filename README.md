@@ -75,7 +75,40 @@ go install github.com/ffuf/ffuf/v2@latest
 export PATH=$PATH:~/go/bin
 ```
 
-### 4. Verify Installation
+### 4. AI Analysis Setup (Required for full functionality)
+
+ARES uses **Ollama** to power AI-driven vulnerability analysis, executive summaries, CVE enrichment, and remediation guidance. Without it, the tool runs in **degraded mode** with generic output.
+
+> [!WARNING]
+> Without Ollama running, ARES will display a prominent warning at scan start and produce generic vulnerability names without CVE IDs. All scan tools still function — only AI enrichment is disabled.
+
+**Install Ollama:**
+```bash
+# Linux
+curl -fsSL https://ollama.com/install.sh | sh
+
+# macOS
+brew install ollama
+```
+
+**Pull the model and start serving:**
+```bash
+ollama pull mistral
+ollama serve
+```
+
+**Verify Ollama is running:**
+```bash
+curl http://localhost:11434/api/tags
+# Should return JSON with mistral listed
+```
+
+> [!NOTE]
+> **For Docker users:** Ollama must run on the **host machine**, not inside the container.
+> Pass `--ollama-host http://host.docker.internal:11434` to ARES inside the container.
+> See the [Docker Deployment](#-docker-deployment) section for details.
+
+### 5. Verify Installation
 ```bash
 python ares.py tools --check
 ```
@@ -202,7 +235,18 @@ docker run -it --rm ares-cli scan -t example.com -p standard
 
 # With volume for reports
 docker run -it --rm -v ./reports:/app/ares_results ares-cli scan -t example.com
+
+# With Ollama AI analysis (Ollama must be running on host)
+docker run -it --rm \
+  -v ./reports:/app/ares_results \
+  ares-cli scan -t example.com -p standard \
+  --ollama-host http://host.docker.internal:11434
 ```
+
+> [!IMPORTANT]
+> Ollama cannot run inside the Docker container. Start `ollama serve` on your
+> host machine and use `--ollama-host http://host.docker.internal:11434` so the
+> container can reach it.
 
 ---
 

@@ -323,5 +323,87 @@ class TestRemediationDB(unittest.TestCase):
         self.assertEqual(len(php_items), 1)
 
 
+# =====================================================================
+# Test: New CVSS Patterns
+# =====================================================================
+class TestNewCVSSPatterns(unittest.TestCase):
+    """Test new CVSS vulnerability patterns added for coverage"""
+    
+    def test_directory_traversal_high(self):
+        result = CVSSCalculator.score_vulnerability("Directory Traversal via ../../etc/passwd")
+        self.assertGreaterEqual(result["cvss_base"], 6.0)
+    
+    def test_xxe_high(self):
+        result = CVSSCalculator.score_vulnerability("XXE Injection in XML parser")
+        self.assertGreaterEqual(result["cvss_base"], 7.0)
+    
+    def test_csrf_medium(self):
+        result = CVSSCalculator.score_vulnerability("CSRF token missing on form")
+        self.assertGreaterEqual(result["cvss_base"], 4.0)
+    
+    def test_deserialization_critical(self):
+        result = CVSSCalculator.score_vulnerability("Insecure Deserialization RCE")
+        self.assertGreaterEqual(result["cvss_base"], 8.0)
+    
+    def test_clickjacking_low(self):
+        result = CVSSCalculator.score_vulnerability("Clickjacking - X-Frame-Options missing")
+        self.assertGreaterEqual(result["cvss_base"], 2.0)
+    
+    def test_idor_medium(self):
+        result = CVSSCalculator.score_vulnerability("IDOR in user profile API")
+        self.assertGreaterEqual(result["cvss_base"], 5.0)
+    
+    def test_file_upload_critical(self):
+        result = CVSSCalculator.score_vulnerability("Unrestricted File Upload")
+        self.assertGreaterEqual(result["cvss_base"], 8.0)
+
+
+# =====================================================================
+# Test: New Remediation DB Entries
+# =====================================================================
+class TestNewRemediationEntries(unittest.TestCase):
+    """Test new remediation database entries"""
+    
+    def test_csrf_lookup(self):
+        rem = get_remediation("CSRF token missing")
+        self.assertIsNotNone(rem)
+        self.assertEqual(rem.cwe_id, "CWE-352")
+    
+    def test_xxe_lookup(self):
+        rem = get_remediation("XXE Injection in parser")
+        self.assertIsNotNone(rem)
+        self.assertEqual(rem.cwe_id, "CWE-611")
+    
+    def test_idor_lookup(self):
+        rem = get_remediation("IDOR vulnerability in API")
+        self.assertIsNotNone(rem)
+        self.assertEqual(rem.cwe_id, "CWE-639")
+    
+    def test_clickjacking_lookup(self):
+        rem = get_remediation("Clickjacking vulnerability")
+        self.assertIsNotNone(rem)
+        self.assertEqual(rem.cwe_id, "CWE-1021")
+    
+    def test_cors_lookup(self):
+        rem = get_remediation("CORS Misconfiguration")
+        self.assertIsNotNone(rem)
+        self.assertEqual(rem.cwe_id, "CWE-942")
+    
+    def test_deserialization_lookup(self):
+        rem = get_remediation("Insecure Deserialization")
+        self.assertIsNotNone(rem)
+        self.assertEqual(rem.cwe_id, "CWE-502")
+    
+    def test_cookie_lookup(self):
+        rem = get_remediation("Cookie without HttpOnly flag")
+        self.assertIsNotNone(rem)
+        self.assertEqual(rem.cwe_id, "CWE-614")
+    
+    def test_file_upload_lookup(self):
+        rem = get_remediation("Unrestricted File Upload")
+        self.assertIsNotNone(rem)
+        self.assertEqual(rem.cwe_id, "CWE-434")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

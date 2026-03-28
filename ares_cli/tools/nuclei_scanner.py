@@ -115,10 +115,12 @@ class NucleiScanner:
             "nuclei",
             "-target", target,
             "-je", output_file,
+            "-as",
             "-rate-limit", str(rate_limit),
             "-timeout", str(timeout),
             "-concurrency", str(concurrency),
             "-retries", "2",
+            "-no-interactsh",
         ]
         
         if silent:
@@ -186,8 +188,8 @@ class NucleiScanner:
             
         return res
     
-    def _parse_output(self, output_file: str) -> List[NucleiVulnerability]:
-        """Parse Nuclei JSON output into structured vulnerabilities"""
+    def _parse_output(self, output_file: str) -> List[Dict]:
+        """Parse Nuclei JSON output into structured vulnerability dicts"""
         vulnerabilities = []
         
         try:
@@ -230,7 +232,9 @@ class NucleiScanner:
                         cvss_score=self._get_cvss(data),
                         cve_id=self._extract_cve(data),
                     )
-                    vulnerabilities.append(vuln)
+                    # Always serialize to dict so downstream consumers never
+                    # receive a NucleiVulnerability object — consistent API contract
+                    vulnerabilities.append(vuln.to_dict())
         except Exception:
             pass
         
@@ -255,8 +259,8 @@ class NucleiScanner:
             return cve_list[0]
         return ""
     
-    def _calculate_stats(self, vulns: List[NucleiVulnerability]) -> Dict:
-        """Calculate vulnerability statistics"""
+    def _calculate_stats(self, vulns: List[Dict]) -> Dict:
+        """Calculate vulnerability statistics from a list of vuln dicts"""
         stats = {
             "total": len(vulns),
             "critical": 0,
@@ -269,13 +273,15 @@ class NucleiScanner:
         }
         
         for v in vulns:
-            severity = v.severity.lower()
+            severity = v.get("severity", "").lower()
             if severity in stats:
                 stats[severity] += 1
-            if v.cvss_score > stats["max_cvss"]:
-                stats["max_cvss"] = v.cvss_score
-            if v.cve_id:
-                stats["cves_found"].append(v.cve_id)
+            cvss = v.get("cvss_score", 0.0) or 0.0
+            if cvss > stats["max_cvss"]:
+                stats["max_cvss"] = cvss
+            cve = v.get("cve_id", "")
+            if cve:
+                stats["cves_found"].append(cve)
         
         return stats
     

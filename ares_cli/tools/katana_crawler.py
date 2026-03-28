@@ -7,6 +7,7 @@ import subprocess
 import json
 import shutil
 import re
+import os
 from typing import List, Dict
 from dataclasses import dataclass, asdict
 from urllib.parse import urlparse
@@ -88,6 +89,10 @@ class KatanaCrawler:
     }
 
     def __init__(self):
+        # Ensure Go bin is in PATH for katana discovery
+        go_bin = os.path.expanduser("~/go/bin")
+        if go_bin not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = go_bin + ":" + os.environ.get("PATH", "")
         self._check_installation()
     
     def _check_installation(self) -> bool:
@@ -137,18 +142,24 @@ class KatanaCrawler:
         if not shutil.which("katana"):
             return {"error": "Katana not installed", "endpoints": []}
         
-        # Build command
+        # Ensure Go bin is in PATH for katana
+        env = os.environ.copy()
+        go_bin = os.path.expanduser("~/go/bin")
+        if go_bin not in env.get("PATH", ""):
+            env["PATH"] = go_bin + ":" + env.get("PATH", "")
+        
+        # Build command — flags verified against Katana v1.5.0
         cmd = [
             "katana",
             "-u", url,
             "-d", str(depth),
-            "-jc",  # JavaScript crawling
-            "-ct", str(timeout),
+            "-jc",                          # JavaScript crawling
+            "-ct", f"{crawl_duration}s",     # Maximum crawl duration
             "-c", str(concurrency),
             "-rl", str(rate_limit),
-            "-timeout", str(crawl_duration),
+            "-timeout", str(timeout),        # Per-request timeout (seconds)
             "-o", "/tmp/katana_output.txt",
-            "-jsonl",  # JSON Lines output
+            "-j",                            # JSON Lines output
             "-silent",
         ]
         
@@ -157,22 +168,19 @@ class KatanaCrawler:
         
         # Headless mode
         if headless:
-            cmd.append("-headless")
+            cmd.append("-hl")
         
         # Form extraction
         if form_extract:
-            cmd.append("-form-extraction")
-        
-        # Output all endpoints
-        if output_all:
-            cmd.append("-ef")  # Extension filter off
+            cmd.append("-fx")
         
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=crawl_duration + 60
+                timeout=crawl_duration + 60,
+                env=env,
             )
             
             endpoints = self._parse_output("/tmp/katana_output.txt")

@@ -224,12 +224,13 @@ class EnhancedReconTools:
             cmd = [
                 "nikto",
                 "-h", target,
-                "-Tuning", tuning,
-                "-maxtime", "120s",
-                "-Format", "txt"
+                "-Tuning", "1234567890",   # all tuning classes
+                "-maxtime", "180s",
+                "-nointeractive",
             ]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
-            return res.stdout[:2000]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=240)
+            # Return full output — do NOT truncate, parser needs all lines
+            return res.stdout
         except Exception as e:
             return f"Nikto error: {e}"
     
@@ -353,7 +354,9 @@ class EnhancedReconTools:
         mode: str = "dir",
         wordlist: str = "small",
         extensions: List[str] = None,
-        quick: bool = False
+        quick: bool = False,
+        threads: int = 40,
+        rate_limit: int = 0
     ) -> Dict:
         """
         Run FFUF web fuzzer.
@@ -366,14 +369,14 @@ class EnhancedReconTools:
             quick: Fast mode
         """
         if quick:
-            return self.ffuf.quick_scan(url)
+            return self.ffuf.quick_scan(url, threads=threads, rate_limit=rate_limit)
         
         if mode == "dir":
-            return self.ffuf.fuzz_directories(url, wordlist=wordlist, extensions=extensions)
+            return self.ffuf.fuzz_directories(url, wordlist=wordlist, extensions=extensions, threads=threads, rate_limit=rate_limit)
         elif mode == "param":
-            return self.ffuf.fuzz_parameters(url, wordlist=wordlist)
+            return self.ffuf.fuzz_parameters(url, wordlist=wordlist, threads=threads)
         else:
-            return self.ffuf.fuzz_directories(url, wordlist=wordlist)
+            return self.ffuf.fuzz_directories(url, wordlist=wordlist, threads=threads, rate_limit=rate_limit)
     
     def run_katana(
         self,

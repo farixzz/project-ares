@@ -323,23 +323,25 @@ class FFUFFuzzer:
         
         return interesting[:20]  # Top 20
     
-    def quick_scan(self, url: str) -> Dict:
+    def quick_scan(self, url: str, threads: int = 50, rate_limit: int = 0) -> Dict:
         """Fast directory scan with common paths"""
         return self.fuzz_directories(
             url=url,
             wordlist="small",
             extensions=["php", "html", "txt", "js"],
-            threads=50,
+            threads=threads,
+            rate_limit=rate_limit,
             timeout=5,
         )
     
-    def deep_scan(self, url: str) -> Dict:
+    def deep_scan(self, url: str, threads: int = 30, rate_limit: int = 0) -> Dict:
         """Comprehensive directory scan with recursion"""
         return self.fuzz_directories(
             url=url,
             wordlist="medium",
             extensions=["php", "html", "asp", "aspx", "jsp", "txt", "json", "xml", "bak"],
-            threads=30,
+            threads=threads,
+            rate_limit=rate_limit,
             timeout=10,
             recursion=True,
             recursion_depth=3,

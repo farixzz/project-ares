@@ -56,32 +56,87 @@ class ReportGenerator:
     def _generate_mitre_mapping(self, data: ReportData) -> Dict[str, Any]:
         """Generate MITRE ATT&CK mapping from findings"""
         mapping = {
-            "T1595": {"name": "Active Scanning", "findings": [], "count": 0},
-            "T1190": {"name": "Exploit Public-Facing Application", "findings": [], "count": 0},
-            "T1589": {"name": "Gather Victim Identity Information", "findings": [], "count": 0},
-            "T1087": {"name": "Account Discovery", "findings": [], "count": 0},
+            "T1595": {"name": "Active Scanning", "tactic": "Reconnaissance", "findings": [], "count": 0},
+            "T1592": {"name": "Gather Victim Host Information", "tactic": "Reconnaissance", "findings": [], "count": 0},
+            "T1190": {"name": "Exploit Public-Facing Application", "tactic": "Initial Access", "findings": [], "count": 0},
+            "T1133": {"name": "External Remote Services", "tactic": "Initial Access", "findings": [], "count": 0},
+            "T1059": {"name": "Command and Scripting Interpreter", "tactic": "Execution", "findings": [], "count": 0},
+            "T1110": {"name": "Brute Force", "tactic": "Credential Access", "findings": [], "count": 0},
+            "T1018": {"name": "Remote System Discovery", "tactic": "Discovery", "findings": [], "count": 0},
+            "T1589": {"name": "Gather Victim Identity Information", "tactic": "Reconnaissance", "findings": [], "count": 0},
+            "T1087": {"name": "Account Discovery", "tactic": "Discovery", "findings": [], "count": 0},
         }
         
         # Map findings to techniques
         if data.open_ports:
             mapping["T1595"]["findings"].append(f"Discovered {len(data.open_ports)} open ports")
             mapping["T1595"]["count"] += 1
+            # Remote services like SSH, RDP, FTP
+            remote_svcs = [p for p in data.open_ports if p.get("service", "") in ["ssh", "rdp", "ftp", "telnet", "vnc"]]
+            if remote_svcs:
+                mapping["T1133"]["findings"].append(f"{len(remote_svcs)} remote access services exposed")
+                mapping["T1133"]["count"] += 1
             
         if data.subdomains:
-            mapping["T1595"]["findings"].append(f"Enumerated {len(data.subdomains)} subdomains")
-            mapping["T1595"]["count"] += 1
+            mapping["T1018"]["findings"].append(f"Enumerated {len(data.subdomains)} subdomains")
+            mapping["T1018"]["count"] += 1
+            
+        if data.technologies:
+            mapping["T1592"]["findings"].append(f"Identified {len(data.technologies)} technologies")
+            mapping["T1592"]["count"] += 1
             
         for vuln in data.vulnerabilities:
             name = vuln.get("name", "").lower()
-            if "sql" in name or "injection" in name or "rce" in name:
+            if "sql" in name or "injection" in name or "rce" in name or "traversal" in name:
                 mapping["T1190"]["findings"].append(vuln.get("name"))
                 mapping["T1190"]["count"] += 1
+            if "command" in name or "rce" in name or "code execution" in name:
+                mapping["T1059"]["findings"].append(vuln.get("name"))
+                mapping["T1059"]["count"] += 1
+            if "credential" in name or "brute" in name or "password" in name or "weak" in name:
+                mapping["T1110"]["findings"].append(vuln.get("name"))
+                mapping["T1110"]["count"] += 1
                 
         if data.endpoints:
             mapping["T1595"]["findings"].append(f"Crawled {len(data.endpoints)} endpoints")
             mapping["T1595"]["count"] += 1
             
         return {k: v for k, v in mapping.items() if v["count"] > 0}
+    
+    def _generate_mitre_html(self, data: ReportData) -> str:
+        """Generate HTML for MITRE ATT&CK mapping section"""
+        mitre_map = self._generate_mitre_mapping(data)
+        
+        if not mitre_map:
+            return "<p style='color: var(--text-muted);'>No MITRE ATT&CK techniques mapped for this scan.</p>"
+        
+        tactic_colors = {
+            "Reconnaissance": "#6c757d",
+            "Initial Access": "#dc3545",
+            "Execution": "#fd7e14",
+            "Credential Access": "#ffc107",
+            "Discovery": "#17a2b8",
+        }
+        
+        html = "<div class='mitre-map'>"
+        for tid, info in mitre_map.items():
+            tactic = info.get('tactic', 'Unknown')
+            color = tactic_colors.get(tactic, '#6c757d')
+            findings_html = ", ".join(str(f) for f in info['findings'][:3])
+            html += f"""
+            <div style="display: flex; align-items: start; margin: 8px 0; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 5px; border-left: 3px solid {color};">
+                <div style="min-width: 80px;">
+                    <span style="background: {color}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;">{tid}</span>
+                </div>
+                <div>
+                    <strong>{info['name']}</strong>
+                    <span style="color: var(--text-muted); font-size: 12px;"> — {tactic}</span>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 3px;">{findings_html}</div>
+                </div>
+            </div>
+            """
+        html += "</div>"
+        return html
 
     def _generate_quick_wins_html(self, vulnerabilities: List[Dict]) -> str:
         """Generate HTML for quick wins section"""
@@ -90,7 +145,9 @@ class ReportGenerator:
         quick_wins = get_quick_wins(vulnerabilities)
         
         if not quick_wins:
-            return "<p style='color: var(--cyber);'>No quick wins identified - good security posture!</p>"
+            if vulnerabilities:
+                return "<p style='color:#ffc107;'>No quick-fix patterns matched these findings. Manual remediation review required — check the Roadmap section below.</p>"
+            return "<p style='color: var(--cyber);'>No vulnerabilities found — good security posture!</p>"
         
         html = "<div class='quick-wins'>"
         for i, win in enumerate(quick_wins[:5], 1):
@@ -111,7 +168,9 @@ class ReportGenerator:
         roadmap = generate_remediation_roadmap(vulnerabilities)
         
         if not roadmap:
-            return "<p>No remediation items - target appears secure.</p>"
+            if vulnerabilities:
+                return "<p style='color:#ffc107;'>Remediation guidance not yet mapped for these specific findings. Review each vulnerability manually and apply vendor patches.</p>"
+            return "<p style='color: var(--cyber);'>No vulnerabilities found — no remediation required.</p>"
         
         html = "<div class='roadmap'>"
         
@@ -821,6 +880,11 @@ class ReportGenerator:
         <div class="card">
             <h3>🗺️ Remediation Roadmap</h3>
             {self._generate_roadmap_html(data.vulnerabilities)}
+        </div>
+        
+        <div class="card" style="border-color: #fd7e14;">
+            <h3>🎯 MITRE ATT&CK Mapping</h3>
+            {self._generate_mitre_html(data)}
         </div>
         
         {'<div class="card"><h3>📜 Compliance Status</h3>' + compliance_cards + '</div>' if compliance_cards else ''}
