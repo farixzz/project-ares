@@ -45,7 +45,7 @@ def print_banner() -> None:
     ║                                                               ║
     ║    [bold #00ff41]Autonomous Recon & Exploitation System[/]             ║
     ║    [dim white]AI-Powered Penetration Testing Framework[/]               ║
-    ║    [bold cyan]v2.0.1 | CVSS Scoring | Remediation Intel[/]             ║
+    ║    [bold cyan]v2.0.2 | CVSS Scoring | Remediation Intel[/]             ║
     ║    [dim white]Developed by[/] [bold #00ff41]farixzz[/] [dim cyan]github.com/farixzz[/]          ║
     ║                                                               ║
     ╚═══════════════════════════════════════════════════════════════╝

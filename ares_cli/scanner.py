@@ -711,6 +711,7 @@ class AutonomousScanner:
             "apache/2.2": {"name": "Apache 2.2 End-of-Life", "severity": "high",
                            "cve": "CVE-2017-9798",
                            "details": "Apache 2.2 is end-of-life since 2017. Vulnerable to Optionsbleed (CVE-2017-9798) and multiple RCE/DoS."},
+            "apache/2.4.7": {"name": "Apache 2.4.7 End-of-Life", "severity": "high", "cve": "CVE-2021-41773", "details": "Apache 2.4.7 is severely outdated (released 2013). Missing 8+ years of security patches."},
             "apache/2.4.49": {"name": "Apache 2.4.49 Path Traversal", "severity": "critical",
                               "cve": "CVE-2021-41773",
                               "details": "Apache 2.4.49 has a critical path traversal and RCE vulnerability (CVE-2021-41773)."},
