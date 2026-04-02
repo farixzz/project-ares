@@ -406,7 +406,7 @@ def status(ctx):
 
 @cli.command(short_help='Serve scan reports over HTTP for remote access')
 @click.option('--port', '-p', default=8888, help='Port to serve on')
-@click.option('--bind', '-b', default='0.0.0.0', help='Bind address')
+@click.option('--bind', '-b', default='127.0.0.1', help='Bind address')
 @click.option('--directory', '-d', default='./ares_results', help='Directory to serve')
 def serve(port, bind, directory):
     """
