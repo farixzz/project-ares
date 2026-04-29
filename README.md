@@ -18,7 +18,7 @@ and exploitation — all from your terminal.
 
 ## 🎬 Demo
 
-https://github.com/farixzz/project-ares/raw/main/.github/assets/Ares-demo.mp4
+[![ARES Demo](https://img.youtube.com/vi/IZ6qwQ6XtFo/maxresdefault.jpg)](https://www.youtube.com/watch?v=IZ6qwQ6XtFo)
 
 ---
 
