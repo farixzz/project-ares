@@ -16,6 +16,13 @@ and exploitation — all from your terminal.
 
 ---
 
+## 🎬 Demo
+
+https://github.com/farixzz/project-ares/raw/main/.github/assets/Ares-demo.mp4
+
+---
+
+
 ## ⚡ Features
 
 ### Core Capabilities
