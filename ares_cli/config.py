@@ -1,4 +1,3 @@
-# ares_cli/config.py
 """
 Configuration management for ARES CLI
 Handles scan profiles, tool paths, and user settings
